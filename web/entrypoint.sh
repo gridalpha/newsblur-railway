@@ -15,11 +15,10 @@ mkdir -p logs .prom_cache static
 
 wait_for_postgres() {
     for attempt in $(seq 1 60); do
-        if python - <<'PY'
+        if python - <<'WAIT_PY'
 import sys
 
 import django
-from django.conf import settings
 
 django.setup()
 from django.db import connection
@@ -29,7 +28,7 @@ try:
 except Exception as exc:  # noqa: BLE001
     print("    postgres not ready: %s" % exc)
     sys.exit(1)
-PY
+WAIT_PY
         then
             return 0
         fi
@@ -40,13 +39,43 @@ PY
     return 1
 }
 
+seed_site() {
+    # django.contrib.sites' default row is example.com, and NewsBlur resolves
+    # blurblog subdomains by stripping the site domain off the request Host. With
+    # the two unrelated, django-subdomains reads the whole Railway hostname as a
+    # subdomain, finds no user by that name, and 302s every visitor to
+    # https://example.com/. The row is rewritten from NEWSBLUR_URL on each boot,
+    # so attaching a custom domain later needs no extra step.
+    python - <<'SITE_PY'
+from urllib.parse import urlparse
+
+import django
+
+django.setup()
+from django.conf import settings
+from django.contrib.sites.models import Site
+
+host = urlparse(settings.NEWSBLUR_URL).netloc or "localhost"
+site, created = Site.objects.get_or_create(pk=settings.SITE_ID, defaults={"domain": host, "name": host})
+if created:
+    print(" ---> [entrypoint] site row created as %s" % host)
+elif site.domain != host:
+    site.domain = host
+    site.name = host
+    site.save()
+    print(" ---> [entrypoint] site domain set to %s" % host)
+else:
+    print(" ---> [entrypoint] site domain already %s" % host)
+SITE_PY
+}
+
 seed_admin() {
     # Creates the Django superuser once. It is never updated afterwards, so an
     # operator who changes the password in the admin keeps that change across
     # every redeploy.
     [ -n "${NEWSBLUR_ADMIN_USERNAME}" ] || return 0
     [ -n "${NEWSBLUR_ADMIN_PASSWORD}" ] || return 0
-    python - <<'PY'
+    python - <<'ADMIN_PY'
 import os
 
 import django
@@ -67,7 +96,7 @@ else:
     except Exception as exc:  # noqa: BLE001
         print(" ---> [entrypoint] could not activate premium for admin: %s" % exc)
     print(" ---> [entrypoint] created admin user %s" % username)
-PY
+ADMIN_PY
 }
 
 case "$ROLE" in
@@ -89,6 +118,7 @@ case "$ROLE" in
             log "migrations never completed; refusing to start the app server"
             exit 1
         fi
+        seed_site
         seed_admin
         log "starting gunicorn on ${PORT:-8000}"
         exec gunicorn \
