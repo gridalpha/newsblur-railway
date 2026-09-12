@@ -1,0 +1,59 @@
+# NewsBlur is three HTTP servers behind one origin. Upstream splits them with
+# haproxy; Railway's edge has no path routing, so this service is the equivalent.
+# Sibling hosts on *.up.railway.app are cross-site, which would drop the session
+# cookie on any XHR, so a single origin is required rather than preferred.
+{
+	admin off
+	auto_https off
+	servers {
+		# Railway's edge connects from CGNAT and rotates its own X-Forwarded-For
+		# entry inside 152.233.0.0/17. Trusting all three keeps the incoming
+		# X-Forwarded-Proto (which Django needs to consider a request secure)
+		# and leaves the leftmost X-Forwarded-For entry as the real client,
+		# which is the value NewsBlur's rate limiter keys on.
+		trusted_proxies static 100.64.0.0/10 fd00::/8 152.233.0.0/17
+	}
+}
+
+:{$PORT:8080} {
+	encode gzip
+
+	# This service's own liveness. A proxy that health-checks an upstream fails
+	# its own first deploy, because the upstream's private name does not resolve
+	# until that service has a container.
+	handle /_proxychk {
+		respond "OK" 200
+	}
+
+	# Exact-path blocks are evaluated in written order, not by specificity, so
+	# every node/imageproxy route has to sit above the catch-all below.
+	handle /v3/socket.io/* {
+		reverse_proxy {$NODE_UPSTREAM:node.railway.internal:8008}
+	}
+	handle /rss_feeds/icon/* {
+		reverse_proxy {$NODE_UPSTREAM:node.railway.internal:8008}
+	}
+	handle /rss_feeds/original_text_fetcher* {
+		reverse_proxy {$NODE_UPSTREAM:node.railway.internal:8008}
+	}
+	handle /original_page/* {
+		reverse_proxy {$NODE_UPSTREAM:node.railway.internal:8008}
+	}
+
+	# imageproxy is addressed at its own root; NewsBlur signs the path that
+	# follows /imageproxy/ with IMAGES_SECRET_KEY.
+	handle_path /imageproxy/* {
+		reverse_proxy {$IMAGEPROXY_UPSTREAM:imageproxy.railway.internal:8088}
+	}
+
+	handle {
+		reverse_proxy {$WEB_UPSTREAM:web.railway.internal:8000} {
+			# Feed fetches and the first page load of a large account both
+			# outlast Caddy's 30s default.
+			transport http {
+				read_timeout 300s
+				write_timeout 300s
+			}
+		}
+	}
+}
