@@ -70,13 +70,18 @@ RUN set -ex \
     && python -c "import py_compile; py_compile.compile('/srv/newsblur/apps/rss_feeds/migrations/0003_mongo_version_4_0.py', doraise=True)"
 
 COPY web/local_settings.py /srv/newsblur/newsblur_web/local_settings.py
+COPY web/reader_subdomain_patch.py /tmp/reader_subdomain_patch.py
 COPY web/railway_whitenoise.py /srv/newsblur/utils/railway_whitenoise.py
 COPY web/entrypoint.sh /usr/local/bin/newsblur-entrypoint
 
 RUN chmod +x /usr/local/bin/newsblur-entrypoint \
     && bash -n /usr/local/bin/newsblur-entrypoint \
     && python -c "import py_compile; py_compile.compile('/srv/newsblur/newsblur_web/local_settings.py', doraise=True)" \
-    && python -c "import py_compile; py_compile.compile('/srv/newsblur/utils/railway_whitenoise.py', doraise=True)"
+    && python -c "import py_compile; py_compile.compile('/srv/newsblur/utils/railway_whitenoise.py', doraise=True)" \
+    && grep -q "^def get_subdomain(request):" /srv/newsblur/apps/reader/views.py \
+    && cat /tmp/reader_subdomain_patch.py >> /srv/newsblur/apps/reader/views.py \
+    && rm -f /tmp/reader_subdomain_patch.py \
+    && python -c "import py_compile; py_compile.compile('/srv/newsblur/apps/reader/views.py', doraise=True)"
 
 # Build the bundles. DEBUG=False turns django-pipeline on, so a container that
 # skipped this step serves a page referencing files that do not exist. Upstream's
