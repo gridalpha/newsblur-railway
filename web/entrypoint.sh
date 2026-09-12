@@ -74,13 +74,21 @@ case "$ROLE" in
     web)
         wait_for_postgres
         log "applying migrations"
+        migrated=0
         for attempt in $(seq 1 10); do
             if python manage.py migrate --noinput; then
+                migrated=1
                 break
             fi
             log "migrate failed, retrying (attempt ${attempt})"
             sleep 10
         done
+        if [ "$migrated" != "1" ]; then
+            # Serving over a half-applied schema looks healthy and is not. Exit so
+            # the restart policy makes the failure visible instead.
+            log "migrations never completed; refusing to start the app server"
+            exit 1
+        fi
         seed_admin
         log "starting gunicorn on ${PORT:-8000}"
         exec gunicorn \

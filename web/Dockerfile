@@ -57,6 +57,18 @@ RUN set -ex \
 # has added since is installed here. Unchanged pins are a no-op.
 RUN uv pip install -r /srv/newsblur/config/requirements.txt
 
+# rss_feeds/0003 hardcodes `setFeatureCompatibilityVersion: "4.0"`, which any
+# server newer than 4.4 rejects outright -- upstream's compose runs mongo:4.0, and
+# this deployment runs 5.0 because that is the newest server pymongo 3 can speak
+# to. Comparing instead of testing inequality makes the step raise the FCV and
+# never lower it, which is the only direction that was ever meaningful.
+RUN set -ex \
+    && MIG=/srv/newsblur/apps/rss_feeds/migrations/0003_mongo_version_4_0.py \
+    && grep -q "if old_version != new_version:" "$MIG" \
+    && sed -i "s/if old_version != new_version:/if old_version < new_version:/" "$MIG" \
+    && grep -q "if old_version < new_version:" "$MIG" \
+    && python -c "import py_compile; py_compile.compile('/srv/newsblur/apps/rss_feeds/migrations/0003_mongo_version_4_0.py', doraise=True)"
+
 COPY web/local_settings.py /srv/newsblur/newsblur_web/local_settings.py
 COPY web/railway_whitenoise.py /srv/newsblur/utils/railway_whitenoise.py
 COPY web/entrypoint.sh /usr/local/bin/newsblur-entrypoint
