@@ -58,11 +58,13 @@ RUN set -ex \
 RUN uv pip install -r /srv/newsblur/config/requirements.txt
 
 COPY web/local_settings.py /srv/newsblur/newsblur_web/local_settings.py
+COPY web/railway_whitenoise.py /srv/newsblur/utils/railway_whitenoise.py
 COPY web/entrypoint.sh /usr/local/bin/newsblur-entrypoint
 
 RUN chmod +x /usr/local/bin/newsblur-entrypoint \
     && bash -n /usr/local/bin/newsblur-entrypoint \
-    && python -c "import py_compile; py_compile.compile('/srv/newsblur/newsblur_web/local_settings.py', doraise=True)"
+    && python -c "import py_compile; py_compile.compile('/srv/newsblur/newsblur_web/local_settings.py', doraise=True)" \
+    && python -c "import py_compile; py_compile.compile('/srv/newsblur/utils/railway_whitenoise.py', doraise=True)"
 
 # Build the bundles. DEBUG=False turns django-pipeline on, so a container that
 # skipped this step serves a page referencing files that do not exist. Upstream's

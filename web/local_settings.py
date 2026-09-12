@@ -101,9 +101,10 @@ DEBUG_QUERIES_SUMMARY_ONLY = True
 SENTRY_DSN = None
 FLASK_SENTRY_DSN = None
 
-# media/ is a STATICFILES_DIRS entry, so collectstatic copies it into
-# STATIC_ROOT and WhiteNoise serves both trees from one URL prefix.
-MEDIA_URL = "/static/"
+# Left at upstream's value. Django's staticfiles refuses to start when
+# MEDIA_URL and STATIC_URL are equal, so the two trees keep separate prefixes
+# and the middleware below registers both.
+MEDIA_URL = "/media/"
 
 LOG_TO_STREAM = True
 
@@ -113,7 +114,7 @@ LOG_TO_STREAM = True
 # off the half-initialised settings module rather than referenced by name.
 _settings_module = _sys.modules.get("newsblur_web.settings")
 if _settings_module is not None and hasattr(_settings_module, "MIDDLEWARE"):
-    MIDDLEWARE = ("whitenoise.middleware.WhiteNoiseMiddleware",) + tuple(_settings_module.MIDDLEWARE)
+    MIDDLEWARE = ("utils.railway_whitenoise.WhiteNoiseWithMedia",) + tuple(_settings_module.MIDDLEWARE)
 WHITENOISE_MAX_AGE = 31536000
 WHITENOISE_INDEX_FILE = False
 
