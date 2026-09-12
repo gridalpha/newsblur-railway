@@ -36,7 +36,7 @@ container-per-service platform needs:
 
 | Arg | Default | Notes |
 |---|---|---|
-| `NEWSBLUR_REF` | `master` | Branch or tag of `samuelclay/NewsBlur` to build. NewsBlur publishes no versioned server releases; `master` is the line self-hosters run. |
+| `NEWSBLUR_REF` | `main` | Branch or tag of `samuelclay/NewsBlur` to build. NewsBlur publishes no versioned server releases; `main` is the line self-hosters run. |
 
 ## Environment
 

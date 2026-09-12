@@ -8,7 +8,7 @@ FROM newsblur/newsblur_python3:latest
 # The base ends on a non-root stage on some rebuilds; every step below needs root.
 USER root
 
-ARG NEWSBLUR_REF=master
+ARG NEWSBLUR_REF=main
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

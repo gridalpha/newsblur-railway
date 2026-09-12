@@ -8,7 +8,7 @@ FROM newsblur/newsblur_node:latest
 
 USER root
 
-ARG NEWSBLUR_REF=master
+ARG NEWSBLUR_REF=main
 
 ENV NODE_ENV=docker \
     NODE_PATH=/node/node_modules/
