@@ -49,10 +49,12 @@ def _split_credentials(kwargs):
     kwargs["host"] = hostname
     if not password:
         username, password = "", username
-    if password:
-        kwargs.setdefault("password", password)
-    if username and username != "default":
-        kwargs.setdefault("username", username)
+    # setdefault is not enough: django-redis-sessions passes password=None
+    # explicitly, so the key exists and the credential would never be applied.
+    if password and not kwargs.get("password"):
+        kwargs["password"] = password
+    if username and username != "default" and not kwargs.get("username"):
+        kwargs["username"] = username
 
 
 class _AuthConnectionPool(_redis.ConnectionPool):
