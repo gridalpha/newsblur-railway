@@ -253,6 +253,10 @@ ELASTICSEARCH_DISCOVER_HOSTS = [_elasticsearch_hostport]
 # Left at their placeholder values unless a deployer supplies a real one, so no
 # feature silently talks to an account nobody owns.
 
+# Upstream's docker settings file ships an `sk-...XXXX` placeholder for each of
+# these, which reads as configured: the similar-feed recommender then calls
+# OpenAI on every new subscription and 500s. Blanking them makes "no key" the
+# unambiguous state the code below can test for.
 for _name in (
     "OPENAI_API_KEY",
     "ANTHROPIC_API_KEY",
@@ -260,6 +264,4 @@ for _name in (
     "XAI_GROK_API_KEY",
     "YOUTUBE_API_KEY",
 ):
-    _value = _env(_name)
-    if _value:
-        globals()[_name] = _value
+    globals()[_name] = _env(_name, "")

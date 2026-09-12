@@ -71,6 +71,7 @@ RUN set -ex \
 
 COPY web/local_settings.py /srv/newsblur/newsblur_web/local_settings.py
 COPY web/reader_subdomain_patch.py /tmp/reader_subdomain_patch.py
+COPY web/rss_feeds_similar_patch.py /tmp/rss_feeds_similar_patch.py
 COPY web/railway_whitenoise.py /srv/newsblur/utils/railway_whitenoise.py
 COPY web/entrypoint.sh /usr/local/bin/newsblur-entrypoint
 
@@ -81,7 +82,11 @@ RUN chmod +x /usr/local/bin/newsblur-entrypoint \
     && grep -q "^def get_subdomain(request):" /srv/newsblur/apps/reader/views.py \
     && cat /tmp/reader_subdomain_patch.py >> /srv/newsblur/apps/reader/views.py \
     && rm -f /tmp/reader_subdomain_patch.py \
-    && python -c "import py_compile; py_compile.compile('/srv/newsblur/apps/reader/views.py', doraise=True)"
+    && python -c "import py_compile; py_compile.compile('/srv/newsblur/apps/reader/views.py', doraise=True)" \
+    && grep -q "    def count_similar_feeds(" /srv/newsblur/apps/rss_feeds/models.py \
+    && cat /tmp/rss_feeds_similar_patch.py >> /srv/newsblur/apps/rss_feeds/models.py \
+    && rm -f /tmp/rss_feeds_similar_patch.py \
+    && python -c "import py_compile; py_compile.compile('/srv/newsblur/apps/rss_feeds/models.py', doraise=True)"
 
 # Build the bundles. DEBUG=False turns django-pipeline on, so a container that
 # skipped this step serves a page referencing files that do not exist. Upstream's
