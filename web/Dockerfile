@@ -55,8 +55,7 @@ RUN set -ex \
 
 # The base image is rebuilt less often than the branch, so anything the branch
 # has added since is installed here. Unchanged pins are a no-op.
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install -r /srv/newsblur/config/requirements.txt
+RUN uv pip install -r /srv/newsblur/config/requirements.txt
 
 COPY web/local_settings.py /srv/newsblur/newsblur_web/local_settings.py
 COPY web/entrypoint.sh /usr/local/bin/newsblur-entrypoint
